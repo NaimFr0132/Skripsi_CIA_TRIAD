@@ -1,0 +1,8 @@
+node_modules
+venv
+ai-service/venv
+.env
+uploads
+dist
+build
+__pycache__

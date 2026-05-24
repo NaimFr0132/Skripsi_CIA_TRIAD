@@ -18,6 +18,7 @@ router.get(
       let query = `
         SELECT 
           audit_logs.id,
+          users.role,
           audit_logs.activity,
           audit_logs.ip_address,
           audit_logs.image_path,

@@ -1,28 +1,91 @@
 import Login from "./pages/Login";
 
-import SuperAdminDashboard from "./pages/SuperAdminDashboard";
-import AdminDashboard from "./pages/AdminDashboard";
-import UserDashboard from "./pages/UserDashboard";
+import SuperAdminDashboard
+  from "./pages/SuperAdminDashboard";
+
+import AdminDashboard
+  from "./pages/AdminDashboard";
+
+import UserDashboard
+  from "./pages/UserDashboard";
+
+import FaceVerification
+  from "./pages/FaceVerification";
+
+import ProtectedRoute
+  from "./components/ProtectedRoute";
 
 function App() {
 
-  const token = localStorage.getItem("token");
+  const token =
+    localStorage.getItem(
+      "token"
+    );
 
-  const role = localStorage.getItem("role");
+  const role =
+    localStorage.getItem(
+      "role"
+    );
+
+  const faceVerified =
+    localStorage.getItem(
+      "face_verified"
+    );
 
   if (!token) {
+
     return <Login />;
+
+  }
+
+  if (
+    role === "superadmin"
+    &&
+    faceVerified === "false"
+  ) {
+
+    return <FaceVerification />;
+
   }
 
   if (role === "superadmin") {
-    return <SuperAdminDashboard />;
+
+    return (
+
+      <ProtectedRoute role="superadmin">
+
+        <SuperAdminDashboard />
+
+      </ProtectedRoute>
+
+    );
+
   }
 
   if (role === "admin1") {
-    return <AdminDashboard />;
+
+    return (
+
+      <ProtectedRoute role="admin1">
+
+        <AdminDashboard />
+
+      </ProtectedRoute>
+
+    );
+
   }
 
-  return <UserDashboard />;
+  return (
+
+    <ProtectedRoute role="user">
+
+      <UserDashboard />
+
+    </ProtectedRoute>
+
+  );
+
 }
 
 export default App;

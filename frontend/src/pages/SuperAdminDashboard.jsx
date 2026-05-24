@@ -13,6 +13,8 @@ function SuperAdminDashboard() {
 
   const [logs, setLogs] = useState([]);
 
+  const [users, setUsers] = useState([]);
+  const username = localStorage.getItem("username");
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -36,6 +38,14 @@ function SuperAdminDashboard() {
         });
 
         setLogs(logRes.data.slice(0, 5));
+
+        const userRes = await axios.get("http://localhost:5000/api/users/all", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        setUsers(userRes.data);
       } catch (error) {
         console.log(error);
       }
@@ -47,7 +57,7 @@ function SuperAdminDashboard() {
   return (
     <div className="min-h-screen flex bg-gray-100">
       <div className="w-64 bg-black text-white p-6">
-        <h1 className="text-2xl font-bold mb-10">Superadmin</h1>
+        <h1 className="text-2xl font-bold mb-10">{username}</h1>
 
         <ul className="space-y-4">
           <li
@@ -71,9 +81,11 @@ function SuperAdminDashboard() {
           <li className="hover:bg-gray-800 p-3 rounded cursor-pointer">
             Download Report
           </li>
+
           <li
             onClick={() => {
               localStorage.clear();
+
               window.location.reload();
             }}
             className="hover:bg-red-700 bg-red-600 p-3 rounded cursor-pointer"
@@ -129,6 +141,38 @@ function SuperAdminDashboard() {
                 })}
               </div>
             </div>
+
+            <div className="bg-white mt-10 p-6 rounded-xl shadow">
+              <h2 className="text-2xl font-bold mb-6">Daftar User</h2>
+
+              <table className="w-full border">
+                <thead>
+                  <tr className="bg-gray-200">
+                    <th className="p-3 border">ID</th>
+
+                    <th className="p-3 border">Username</th>
+
+                    <th className="p-3 border">Role</th>
+
+                    <th className="p-3 border">Email</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {users.map((user) => (
+                    <tr key={user.id}>
+                      <td className="p-3 border">{user.id}</td>
+
+                      <td className="p-3 border">{user.username}</td>
+
+                      <td className="p-3 border">{user.role}</td>
+
+                      <td className="p-3 border">{user.email}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
 
@@ -136,6 +180,18 @@ function SuperAdminDashboard() {
       </div>
     </div>
   );
+  <button
+  onClick={() => {
+
+    localStorage.clear();
+
+    window.location.reload();
+
+  }}
+  className="bg-gray-700 text-white px-4 py-2 rounded"
+>
+  Kembali ke Login
+</button>
 }
 
 export default SuperAdminDashboard;

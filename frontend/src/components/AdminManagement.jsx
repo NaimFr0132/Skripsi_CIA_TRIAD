@@ -65,7 +65,7 @@ function AdminManagement({
 
         <button
           onClick={createAdmin}
-          className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl transition-all duration-200 font-medium"
+          className="mt-6 bg-blue-600 hover:bg-blue-700 hover:scale-[1.02] text-white px-6 py-4 rounded-2xl transition-all duration-200 font-medium"
         >
           Tambah Admin
         </button>

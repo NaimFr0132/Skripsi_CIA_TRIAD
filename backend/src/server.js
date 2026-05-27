@@ -12,6 +12,8 @@ const exportRoutes = require("./routes/exportRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const forgotPasswordRoutes = require("./routes/forgotPasswordRoutes");
 const userRoutes = require("./routes/userRoutes");
+const pklPartnerRoutes = require("./routes/pklPartnerRoutes");
+const pklRequestRoutes = require("./routes/pklRequestRoutes");
 
 const deleteOldLogs = require("./jobs/deleteOldLogs");
 
@@ -21,7 +23,7 @@ app.use(
   cors({
     origin: "http://localhost:5173",
     credentials: true,
-  })
+  }),
 );
 
 app.use(express.json());
@@ -34,39 +36,26 @@ app.use("/api/export", exportRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/forgot-password", forgotPasswordRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/pkl-partner", pklPartnerRoutes);
+app.use("/api/pkl-request", pklRequestRoutes);
 
 app.get("/", async (req, res) => {
   try {
-
-    const result =
-      await pool.query(
-        "SELECT NOW()"
-      );
+    const result = await pool.query("SELECT NOW()");
 
     res.json({
-      message:
-        "Database connected",
-      time:
-        result.rows[0],
+      message: "Database connected",
+      time: result.rows[0],
     });
-
   } catch (error) {
-
-    res.status(500)
-      .json(error);
-
+    res.status(500).json(error);
   }
 });
 
 deleteOldLogs();
 
-const PORT =
-  process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-
-  console.log(
-    `Server running on port ${PORT}`
-  );
-
+  console.log(`Server running on port ${PORT}`);
 });

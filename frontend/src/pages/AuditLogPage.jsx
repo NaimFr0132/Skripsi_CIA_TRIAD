@@ -131,7 +131,27 @@ function AuditLogPage() {
                   </span>
                 </td>
 
-                <td className="p-5 text-slate-700">{log.activity}</td>
+                <td className="border p-3">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        log.activity.includes("Menambahkan")
+                          ? "bg-green-500"
+                          : log.activity.includes("Menghapus")
+                            ? "bg-red-500"
+                            : log.activity.includes("Menyetujui")
+                              ? "bg-blue-500"
+                              : log.activity.includes("Menolak")
+                                ? "bg-orange-500"
+                                : "bg-slate-400"
+                      }`}
+                    />
+
+                    <span className="font-medium text-slate-700">
+                      {log.activity}
+                    </span>
+                  </div>
+                </td>
 
                 <td className="p-5 text-slate-500">{log.ip_address}</td>
 

@@ -6,6 +6,7 @@ import StatsCard from "../components/StatsCard";
 import RecentActivity from "../components/RecentActivity";
 import UserTable from "../components/UserTable";
 import AdminManagement from "../components/AdminManagement";
+import PKLPartnerManagement from "./superadmin/PKLPartnerManagement";
 
 function SuperAdminDashboard() {
   const [page, setPage] = useState("dashboard");
@@ -136,6 +137,8 @@ function SuperAdminDashboard() {
             <UserTable users={users} />
           </>
         )}
+
+        {page === "pkl-partner" && <PKLPartnerManagement />}
 
         {page === "admin-management" && (
           <AdminManagement

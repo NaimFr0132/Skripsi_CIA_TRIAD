@@ -2,11 +2,23 @@ const express = require("express");
 
 const pool = require("../config/db");
 
-const router = express.Router();
+const authMiddleware =
+  require("../middleware/authMiddleware");
+
+const roleMiddleware =
+  require("../middleware/roleMiddleware");
 
 const createAuditLog =
   require("../utils/createAuditLog");
 
+const router =
+  express.Router();
+
+router.use(authMiddleware);
+
+router.use(
+  roleMiddleware("superadmin")
+);
 router.get("/all", async (req, res) => {
 
   try {

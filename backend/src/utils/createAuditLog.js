@@ -3,10 +3,15 @@ const pool =
 
 const createAuditLog =
   async ({
-    user_id,
-    activity,
+    user_id = null,
+    role = null,
+    action,
+    description = null,
+    severity = "low",
+    status = "success",
     ip_address = null,
-    image_path = null,
+    user_agent = null,
+    snapshot_image = null,
   }) => {
 
     try {
@@ -16,18 +21,28 @@ const createAuditLog =
         INSERT INTO audit_logs
         (
           user_id,
-          activity,
-          image_path,
-          ip_address
+          role,
+          action,
+          description,
+          severity,
+          status,
+          ip_address,
+          user_agent,
+          snapshot_image
         )
 
-        VALUES ($1, $2, $3, $4)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
         `,
         [
           user_id,
-          activity,
-          image_path,
+          role,
+          action,
+          description,
+          severity,
+          status,
           ip_address,
+          user_agent,
+          snapshot_image,
         ]
       );
 

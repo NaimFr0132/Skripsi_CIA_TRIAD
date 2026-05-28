@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import axios from "axios";
+import toast from "react-hot-toast";
 
 function PKLValidation() {
   const [requests, setRequests] = useState([]);
@@ -24,6 +25,7 @@ function PKLValidation() {
   const approveRequest = async (id) => {
     try {
       await axios.put(`http://localhost:5000/api/pkl-request/approve/${id}`);
+      toast.success("Pengajuan disetujui");
 
       fetchRequests();
     } catch (error) {
@@ -34,6 +36,7 @@ function PKLValidation() {
   const rejectRequest = async (id) => {
     try {
       await axios.put(`http://localhost:5000/api/pkl-request/reject/${id}`);
+      toast.error("Pengajuan ditolak");
 
       fetchRequests();
     } catch (error) {

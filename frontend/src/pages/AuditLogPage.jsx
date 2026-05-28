@@ -34,16 +34,85 @@ function AuditLogPage() {
     }
   };
 
-  const handleDownload = () => {
-    window.open("http://localhost:5000/api/export/audit/download", "_blank");
+  const handleDownload = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await axios.get(
+        "http://localhost:5000/api/export/audit/download",
+
+        {
+          responseType: "blob",
+
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+
+      const link = document.createElement("a");
+
+      link.href = url;
+
+      link.setAttribute("download", "audit_logs.xlsx");
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const filteredLogs = logs.filter((log) => {
     return (
       log.username?.toLowerCase().includes(search.toLowerCase()) ||
-      log.activity?.toLowerCase().includes(search.toLowerCase())
+      log.description?.toLowerCase().includes(search.toLowerCase()) ||
+      log.action?.toLowerCase().includes(search.toLowerCase())
     );
   });
+
+  const getSeverityColor = (severity) => {
+    switch (severity) {
+      case "critical":
+        return "bg-red-100 text-red-600";
+
+      case "high":
+        return "bg-orange-100 text-orange-600";
+
+      case "medium":
+        return "bg-yellow-100 text-yellow-700";
+
+      default:
+        return "bg-green-100 text-green-600";
+    }
+  };
+
+  const getActionDotColor = (action) => {
+    if (!action) return "bg-slate-400";
+
+    if (action.includes("DELETE")) {
+      return "bg-red-500";
+    }
+
+    if (action.includes("FAILED")) {
+      return "bg-orange-500";
+    }
+
+    if (action.includes("APPROVED")) {
+      return "bg-blue-500";
+    }
+
+    if (action.includes("SUCCESS")) {
+      return "bg-green-500";
+    }
+
+    return "bg-slate-400";
+  };
 
   return (
     <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
@@ -51,12 +120,14 @@ function AuditLogPage() {
         <div>
           <h1 className="text-4xl font-bold text-slate-800">Audit Log</h1>
 
-          <p className="text-slate-500 mt-2">Monitoring aktivitas sistem</p>
+          <p className="text-slate-500 mt-2">
+            Monitoring aktivitas dan keamanan sistem
+          </p>
         </div>
 
         <button
           onClick={handleDownload}
-          className="bg-blue-600 hover:bg-blue-700 hover:scale-[1.02] text-white px-6 py-4 rounded-2xl transition-all duration-200 font-medium"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl transition-all duration-200 font-medium"
         >
           Download Excel
         </button>
@@ -65,7 +136,7 @@ function AuditLogPage() {
       <div className="flex flex-col md:flex-row gap-4 mb-8">
         <input
           type="text"
-          placeholder="Cari username atau aktivitas..."
+          placeholder="Cari aktivitas..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="border border-slate-200 px-5 py-4 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 flex-1"
@@ -82,7 +153,7 @@ function AuditLogPage() {
       <div className="overflow-x-auto rounded-3xl border border-slate-200">
         <table className="w-full">
           <thead>
-            <tr className="bg-slate-100 sticky top-0 z-10">
+            <tr className="bg-slate-100">
               <th className="text-left p-5 text-slate-500 font-semibold">
                 User
               </th>
@@ -92,7 +163,11 @@ function AuditLogPage() {
               </th>
 
               <th className="text-left p-5 text-slate-500 font-semibold">
-                Aktivitas
+                Action
+              </th>
+
+              <th className="text-left p-5 text-slate-500 font-semibold">
+                Severity
               </th>
 
               <th className="text-left p-5 text-slate-500 font-semibold">IP</th>
@@ -114,7 +189,7 @@ function AuditLogPage() {
                 className="border-b border-slate-100 hover:bg-slate-50 transition-all duration-200"
               >
                 <td className="p-5 font-medium text-slate-800">
-                  {log.username}
+                  {log.username || "-"}
                 </td>
 
                 <td className="p-5">
@@ -122,45 +197,47 @@ function AuditLogPage() {
                     className={
                       log.role === "superadmin"
                         ? "bg-red-100 text-red-600 px-3 py-1 rounded-full text-sm"
-                        : log.role === "admin1"
+                        : log.role === "admin"
                           ? "bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm"
                           : "bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-sm"
                     }
                   >
-                    {log.role}
+                    {log.role || "-"}
                   </span>
                 </td>
 
-                <td className="border p-3">
+                <td className="p-5">
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-3 h-3 rounded-full ${
-                        log.activity.includes("Menambahkan")
-                          ? "bg-green-500"
-                          : log.activity.includes("Menghapus")
-                            ? "bg-red-500"
-                            : log.activity.includes("Menyetujui")
-                              ? "bg-blue-500"
-                              : log.activity.includes("Menolak")
-                                ? "bg-orange-500"
-                                : "bg-slate-400"
-                      }`}
+                      className={`w-3 h-3 rounded-full ${getActionDotColor(log.action)}`}
                     />
 
-                    <span className="font-medium text-slate-700">
-                      {log.activity}
-                    </span>
+                    <div>
+                      <p className="font-medium text-slate-700">{log.action}</p>
+
+                      <p className="text-sm text-slate-400 mt-1">
+                        {log.description}
+                      </p>
+                    </div>
                   </div>
                 </td>
 
-                <td className="p-5 text-slate-500">{log.ip_address}</td>
+                <td className="p-5">
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm ${getSeverityColor(log.severity)}`}
+                  >
+                    {log.severity}
+                  </span>
+                </td>
+
+                <td className="p-5 text-slate-500">{log.ip_address || "-"}</td>
 
                 <td className="p-5">
-                  {log.image_path ? (
+                  {log.snapshot_image ? (
                     <button
                       onClick={() =>
                         setSelectedImage(
-                          `http://127.0.0.1:8000/${log.image_path}`,
+                          `http://localhost:5000/${log.snapshot_image}`,
                         )
                       }
                       className="bg-blue-100 text-blue-600 px-4 py-2 rounded-xl hover:bg-blue-200 transition-all duration-200"
@@ -179,29 +256,30 @@ function AuditLogPage() {
             ))}
           </tbody>
         </table>
-        {selectedImage && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-3xl max-w-3xl w-full relative shadow-2xl animate-[fadeIn_.2s_ease-in-out]">
-              <button
-                onClick={() => setSelectedImage(null)}
-                className="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white w-10 h-10 rounded-full"
-              >
-                ✕
-              </button>
-
-              <h2 className="text-2xl font-bold text-slate-800 mb-6">
-                Foto Audit
-              </h2>
-
-              <img
-                src={selectedImage}
-                alt="Audit"
-                className="w-full rounded-2xl border border-slate-200"
-              />
-            </div>
-          </div>
-        )}
       </div>
+
+      {selectedImage && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-3xl max-w-3xl w-full relative shadow-2xl">
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white w-10 h-10 rounded-full"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-2xl font-bold text-slate-800 mb-6">
+              Foto Audit
+            </h2>
+
+            <img
+              src={selectedImage}
+              alt="Audit"
+              className="w-full rounded-2xl border border-slate-200"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

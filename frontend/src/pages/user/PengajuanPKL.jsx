@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import axios from "axios";
 
 function PengajuanPKL() {
@@ -45,7 +46,7 @@ function PengajuanPKL() {
         partner_id: partnerId,
       });
 
-      alert("Pengajuan PKL berhasil dikirim");
+      toast.success("Pengajuan berhasil dikirim");
 
       fetchMyRequest();
     } catch (error) {

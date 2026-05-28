@@ -19,6 +19,18 @@ const deleteOldLogs = require("./jobs/deleteOldLogs");
 
 const app = express();
 
+const path = require("path");
+
+app.use(
+  "/uploads",
+  express.static(
+    path.join(
+      __dirname,
+      "../../ai-service/uploads"
+    )
+  )
+);
+
 app.use(
   cors({
     origin: "http://localhost:5173",

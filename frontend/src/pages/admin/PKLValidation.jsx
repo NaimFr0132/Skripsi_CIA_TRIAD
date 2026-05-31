@@ -14,7 +14,13 @@ function PKLValidation() {
 
   const fetchRequests = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/pkl-request/all");
+      const token = localStorage.getItem("token");
+
+      const res = await axios.get("http://localhost:5000/api/pkl-request/all", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       setRequests(res.data);
     } catch (error) {
@@ -24,22 +30,48 @@ function PKLValidation() {
 
   const approveRequest = async (id) => {
     try {
-      await axios.put(`http://localhost:5000/api/pkl-request/approve/${id}`);
+      const token = localStorage.getItem("token");
+
+      await axios.put(
+        `http://localhost:5000/api/pkl-request/approve/${id}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
       toast.success("Pengajuan disetujui");
 
       fetchRequests();
     } catch (error) {
+      toast.error(error.response?.data?.message || "Gagal menyetujui PKL");
+
       console.log(error);
     }
   };
 
   const rejectRequest = async (id) => {
     try {
-      await axios.put(`http://localhost:5000/api/pkl-request/reject/${id}`);
-      toast.error("Pengajuan ditolak");
+      const token = localStorage.getItem("token");
+
+      await axios.put(
+        `http://localhost:5000/api/pkl-request/reject/${id}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      toast.success("Pengajuan ditolak");
 
       fetchRequests();
     } catch (error) {
+      toast.error(error.response?.data?.message || "Gagal menolak PKL");
+
       console.log(error);
     }
   };
@@ -133,7 +165,7 @@ function PKLValidation() {
             <tbody>
               {requests
                 .filter((item) => {
-                  const cocokNama = item.siswa_nama
+                  const cocokNama = (item.siswa_nama || "")
                     .toLowerCase()
                     .includes(search.toLowerCase());
 

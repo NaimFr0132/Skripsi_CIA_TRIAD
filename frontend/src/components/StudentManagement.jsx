@@ -23,7 +23,13 @@ function StudentManagement() {
 
   const fetchStudents = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/users/all");
+      const token = localStorage.getItem("token");
+
+      const res = await axios.get("http://localhost:5000/api/users/all", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       const siswa = res.data.filter((user) => user.role === "siswa");
 

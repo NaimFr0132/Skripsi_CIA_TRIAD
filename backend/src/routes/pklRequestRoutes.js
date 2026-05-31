@@ -49,22 +49,46 @@ router.post("/create", async (req, res) => {
   try {
     const { partner_id } = req.body;
 
+    const existingRequest = await pool.query(
+      `
+      SELECT *
+      FROM pkl_requests
+      WHERE siswa_id = $1
+      AND status IN ('Menunggu', 'Disetujui')
+      `,
+      [req.user.id]
+    );
+
+    if (existingRequest.rows.length > 0) {
+      return res.status(400).json({
+        message:
+          "Anda masih memiliki pengajuan PKL aktif",
+      });
+    }
+
     await pool.query(
       `
       INSERT INTO pkl_requests
+      (
+        siswa_id,
+        siswa_nama,
+        partner_id,
+        status
+      )
+      VALUES
+      (
+        $1,
+        $2,
+        $3,
+        $4
+      )
+      `,
       [
         req.user.id,
         req.user.username,
         partner_id,
+        "Menunggu",
       ]
-
-      VALUES
-      (
-        $1,
-        $2
-      )
-      `,
-      [siswa_nama, partner_id],
     );
 
     await createAuditLog({
@@ -74,7 +98,8 @@ router.post("/create", async (req, res) => {
 
       action: "CREATE_PKL_REQUEST",
 
-      description: `${req.user.username} mengajukan PKL`,
+      description:
+        `${req.user.username} mengajukan PKL`,
 
       severity: "medium",
 
@@ -82,16 +107,21 @@ router.post("/create", async (req, res) => {
 
       ip_address: req.ip,
 
-      user_agent: req.headers["user-agent"],
+      user_agent:
+        req.headers["user-agent"],
     });
 
     res.json({
-      message: "Pengajuan PKL berhasil dibuat",
+      message:
+        "Pengajuan PKL berhasil dibuat",
     });
   } catch (error) {
     console.log(error);
 
-    res.status(500).json(error);
+    res.status(500).json({
+      message:
+        "Gagal membuat pengajuan PKL",
+    });
   }
 });
 
@@ -101,23 +131,35 @@ router.put("/approve/:id", async (req, res) => {
 
     const requestData = await pool.query(
       `
-          SELECT *
-          FROM pkl_requests
-          WHERE id = $1
-          `,
-      [id],
+      SELECT *
+      FROM pkl_requests
+      WHERE id = $1
+      `,
+      [id]
     );
+
+    if (requestData.rows.length === 0) {
+      return res.status(404).json({
+        message: "Pengajuan tidak ditemukan",
+      });
+    }
 
     const request = requestData.rows[0];
 
+    if (request.status === "Disetujui") {
+      return res.status(400).json({
+        message: "Pengajuan sudah disetujui sebelumnya",
+      });
+    }
+
     const existingApproved = await pool.query(
       `
-          SELECT *
-          FROM pkl_requests
-          WHERE siswa_nama = $1
-          AND status = 'Disetujui'
-          `,
-      [request.siswa_nama],
+      SELECT *
+      FROM pkl_requests
+      WHERE siswa_id = $1
+      AND status = 'Disetujui'
+      `,
+      [request.siswa_id]
     );
 
     if (existingApproved.rows.length > 0) {
@@ -126,20 +168,20 @@ router.put("/approve/:id", async (req, res) => {
       });
     }
 
-    if (!request) {
-      return res.status(404).json({
-        message: "Pengajuan tidak ditemukan",
-      });
-    }
-
     const partnerData = await pool.query(
       `
-          SELECT *
-          FROM pkl_partners
-          WHERE id = $1
-          `,
-      [request.partner_id],
+      SELECT *
+      FROM pkl_partners
+      WHERE id = $1
+      `,
+      [request.partner_id]
     );
+
+    if (partnerData.rows.length === 0) {
+      return res.status(404).json({
+        message: "Mitra PKL tidak ditemukan",
+      });
+    }
 
     const partner = partnerData.rows[0];
 
@@ -151,28 +193,50 @@ router.put("/approve/:id", async (req, res) => {
 
     await pool.query(
       `
-        UPDATE pkl_requests
-        SET status = 'Disetujui'
-        WHERE id = $1
-        `,
-      [id],
+      UPDATE pkl_requests
+      SET status = 'Disetujui'
+      WHERE id = $1
+      `,
+      [id]
     );
 
     await pool.query(
       `
-        UPDATE pkl_partners
-        SET kuota = kuota - 1
-        WHERE id = $1
-        `,
-      [request.partner_id],
+      UPDATE pkl_partners
+      SET kuota = kuota - 1
+      WHERE id = $1
+      `,
+      [request.partner_id]
+    );
+
+    await pool.query(
+      `
+      UPDATE users
+      SET partner_pkl_id = $1
+      WHERE id = $2
+      `,
+      [
+        request.partner_id,
+        request.siswa_id,
+      ]
     );
 
     await createAuditLog({
-      user_id: 1,
+      user_id: req.user.id,
 
-      activity: `Menyetujui PKL siswa ${request.siswa_nama}`,
+      role: req.user.role,
+
+      action: "APPROVE_PKL_REQUEST",
+
+      description: `Menyetujui PKL siswa ${request.siswa_nama}`,
+
+      severity: "high",
+
+      status: "success",
 
       ip_address: req.ip,
+
+      user_agent: req.headers["user-agent"],
     });
 
     res.json({
@@ -181,7 +245,9 @@ router.put("/approve/:id", async (req, res) => {
   } catch (error) {
     console.log(error);
 
-    res.status(500).json(error);
+    res.status(500).json({
+      message: "Gagal menyetujui pengajuan PKL",
+    });
   }
 });
 
@@ -210,11 +276,21 @@ router.put("/reject/:id", async (req, res) => {
     );
 
     await createAuditLog({
-      user_id: 1,
+      user_id: req.user.id,
 
-      activity: `Menolak PKL siswa ${request.siswa_nama}`,
+      role: req.user.role,
+
+      action: "REJECT_PKL_REQUEST",
+
+      description: `Menolak PKL siswa ${request.siswa_nama}`,
+
+      severity: "high",
+
+      status: "success",
 
       ip_address: req.ip,
+
+      user_agent: req.headers["user-agent"],
     });
 
     res.json({
@@ -227,27 +303,25 @@ router.put("/reject/:id", async (req, res) => {
   }
 });
 
-router.get("/student/:nama", async (req, res) => {
+router.get("/student", async (req, res) => {
   try {
-    const { nama } = req.params;
-
     const result = await pool.query(
       `
-          SELECT
-            pkl_requests.*,
-            pkl_partners.nama_perusahaan
+      SELECT
+        pkl_requests.*,
+        pkl_partners.nama_perusahaan
 
-          FROM pkl_requests
+      FROM pkl_requests
 
-          JOIN pkl_partners
-          ON pkl_requests.partner_id =
-          pkl_partners.id
+      JOIN pkl_partners
+      ON pkl_requests.partner_id =
+      pkl_partners.id
 
-          WHERE siswa_nama = $1
+      WHERE pkl_requests.siswa_id = $1
 
-          ORDER BY pkl_requests.id DESC
-          `,
-      [nama],
+      ORDER BY pkl_requests.id DESC
+      `,
+      [req.user.id],
     );
 
     res.json(result.rows);

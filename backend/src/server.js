@@ -14,6 +14,7 @@ const forgotPasswordRoutes = require("./routes/forgotPasswordRoutes");
 const userRoutes = require("./routes/userRoutes");
 const pklPartnerRoutes = require("./routes/pklPartnerRoutes");
 const pklRequestRoutes = require("./routes/pklRequestRoutes");
+const nilaiRoutes = require("./routes/nilaiRoutes");
 
 const deleteOldLogs = require("./jobs/deleteOldLogs");
 
@@ -50,6 +51,8 @@ app.use("/api/forgot-password", forgotPasswordRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/pkl-partner", pklPartnerRoutes);
 app.use("/api/pkl-request", pklRequestRoutes);
+app.use("/api/nilai", nilaiRoutes);
+
 
 app.get("/", async (req, res) => {
   try {

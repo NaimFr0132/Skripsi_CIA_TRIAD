@@ -2,125 +2,148 @@ const express = require("express");
 
 const pool = require("../config/db");
 
-const authMiddleware =
-  require("../middleware/authMiddleware");
+const authMiddleware = require("../middleware/authMiddleware");
 
-const roleMiddleware =
-  require("../middleware/roleMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
 
-const createAuditLog =
-  require("../utils/createAuditLog");
+const createAuditLog = require("../utils/createAuditLog");
 
-const router =
-  express.Router();
+const router = express.Router();
 
 router.use(authMiddleware);
 
-router.use(
-  roleMiddleware("superadmin")
-);
 router.get("/all", async (req, res) => {
-
   try {
-
-    const result =
-      await pool.query(
-        `
-        SELECT *
-        FROM pkl_partners
-        ORDER BY id DESC
-        `
-      );
+    const result = await pool.query(`
+      SELECT *
+      FROM pkl_partners
+      ORDER BY id DESC
+    `);
 
     res.json(result.rows);
-
   } catch (error) {
-
     console.log(error);
 
-    res.status(500).json(error);
-
+    res.status(500).json({
+      message: "Gagal mengambil data mitra PKL",
+    });
   }
-
 });
 
-router.post("/create", async (req, res) => {
-
+router.get("/:id", async (req, res) => {
   try {
+    const { id } = req.params;
 
-    const {
-      nama_perusahaan,
-      alamat,
-      kuota,
-      kontak,
-      bidang_industri,
-    } = req.body;
-
-    await pool.query(
+    const result = await pool.query(
       `
-      INSERT INTO pkl_partners
-      (
-        nama_perusahaan,
-        alamat,
-        kuota,
-        kontak,
-        bidang_industri
-      )
-
-      VALUES
-      (
-        $1,
-        $2,
-        $3,
-        $4,
-        $5
-      )
+      SELECT *
+      FROM pkl_partners
+      WHERE id = $1
       `,
-      [
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "Partner tidak ditemukan",
+      });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      message: "Gagal mengambil data partner",
+    });
+  }
+});
+
+router.post(
+  "/create",
+  roleMiddleware("superadmin"),
+  async (req, res) => {
+    try {
+      const {
         nama_perusahaan,
         alamat,
         kuota,
         kontak,
         bidang_industri,
-      ]
-    );
+      } = req.body;
 
-    await createAuditLog({
+      if (
+        !nama_perusahaan ||
+        !alamat ||
+        !kuota ||
+        !kontak ||
+        !bidang_industri
+      ) {
+        return res.status(400).json({
+          message: "Semua field wajib diisi",
+        });
+      }
 
-      user_id: 1,
-
-      activity:
-        `Menambahkan mitra PKL ${nama_perusahaan}`,
-
-      ip_address:
-        req.ip,
-
-    });
-
-    res.json({
-      message:
-        "Mitra PKL berhasil ditambahkan",
-    });
-
-  } catch (error) {
-
-    console.log(error);
-
-    res.status(500).json(error);
-
-  }
-
-});
-
-router.delete("/delete/:id", async (req, res) => {
-
-  try {
-
-    const { id } =
-      req.params;
-
-    const partnerData =
       await pool.query(
+        `
+        INSERT INTO pkl_partners
+        (
+          nama_perusahaan,
+          alamat,
+          kuota,
+          kontak,
+          bidang_industri
+        )
+        VALUES
+        (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5
+        )
+        `,
+        [
+          nama_perusahaan,
+          alamat,
+          Number(kuota),
+          kontak,
+          bidang_industri,
+        ]
+      );
+
+      await createAuditLog({
+        user_id: req.user.id,
+        role: req.user.role,
+        action: "CREATE_PKL_PARTNER",
+        description: `Menambahkan mitra PKL ${nama_perusahaan}`,
+        severity: "medium",
+        status: "success",
+        ip_address: req.ip,
+        user_agent: req.headers["user-agent"],
+      });
+
+      res.json({
+        message: "Mitra PKL berhasil ditambahkan",
+      });
+    } catch (error) {
+      console.log(error);
+
+      res.status(500).json({
+        message: "Gagal menambahkan mitra PKL",
+      });
+    }
+  }
+);
+
+router.delete(
+  "/delete/:id",
+  roleMiddleware("superadmin"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const partnerData = await pool.query(
         `
         SELECT *
         FROM pkl_partners
@@ -129,42 +152,44 @@ router.delete("/delete/:id", async (req, res) => {
         [id]
       );
 
-    const partner =
-      partnerData.rows[0];
+      if (partnerData.rows.length === 0) {
+        return res.status(404).json({
+          message: "Mitra PKL tidak ditemukan",
+        });
+      }
 
-    await pool.query(
-      `
-      DELETE FROM pkl_partners
-      WHERE id = $1
-      `,
-      [id]
-    );
+      const partner = partnerData.rows[0];
 
-    await createAuditLog({
+      await pool.query(
+        `
+        DELETE FROM pkl_partners
+        WHERE id = $1
+        `,
+        [id]
+      );
 
-      user_id: 1,
+      await createAuditLog({
+        user_id: req.user.id,
+        role: req.user.role,
+        action: "DELETE_PKL_PARTNER",
+        description: `Menghapus mitra PKL ${partner.nama_perusahaan}`,
+        severity: "high",
+        status: "success",
+        ip_address: req.ip,
+        user_agent: req.headers["user-agent"],
+      });
 
-      activity:
-        `Menghapus mitra PKL ${partner.nama_perusahaan}`,
+      res.json({
+        message: "Mitra PKL berhasil dihapus",
+      });
+    } catch (error) {
+      console.log(error);
 
-      ip_address:
-        req.ip,
-
-    });
-
-    res.json({
-      message:
-        "Mitra PKL berhasil dihapus",
-    });
-
-  } catch (error) {
-
-    console.log(error);
-
-    res.status(500).json(error);
-
+      res.status(500).json({
+        message: "Gagal menghapus mitra PKL",
+      });
+    }
   }
-
-});
+);
 
 module.exports = router;

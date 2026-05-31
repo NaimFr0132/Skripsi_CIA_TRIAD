@@ -9,25 +9,51 @@ function PengajuanPKL() {
 
   const fetchPartners = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/pkl-partner/all");
+      const token =
+        localStorage.getItem("token");
+
+      const res =
+        await axios.get(
+          "http://localhost:5000/api/pkl-partner/all",
+          {
+            headers: {
+              Authorization:
+                `Bearer ${token}`,
+            },
+          }
+        );
 
       setPartners(res.data);
+
     } catch (error) {
+
       console.log(error);
+
     }
   };
 
   const fetchMyRequest = async () => {
     try {
-      const username = localStorage.getItem("username");
+      const token =
+        localStorage.getItem("token");
 
-      const res = await axios.get(
-        `http://localhost:5000/api/pkl-request/student/${username}`,
-      );
+      const res =
+        await axios.get(
+          "http://localhost:5000/api/pkl-request/student",
+          {
+            headers: {
+              Authorization:
+                `Bearer ${token}`,
+            },
+          }
+        );
 
       setMyRequest(res.data);
+
     } catch (error) {
+
       console.log(error);
+
     }
   };
 
@@ -39,29 +65,53 @@ function PengajuanPKL() {
 
   const ajukanPKL = async (partnerId) => {
     try {
-      const username = localStorage.getItem("username");
+      const token =
+        localStorage.getItem("token");
 
-      await axios.post("http://localhost:5000/api/pkl-request/create", {
-        siswa_nama: username,
-        partner_id: partnerId,
-      });
+      await axios.post(
+        "http://localhost:5000/api/pkl-request/create",
+        {
+          partner_id: partnerId,
+        },
+        {
+          headers: {
+            Authorization:
+              `Bearer ${token}`,
+          },
+        }
+      );
 
-      toast.success("Pengajuan berhasil dikirim");
+      toast.success(
+        "Pengajuan berhasil dikirim"
+      );
 
       fetchMyRequest();
+
     } catch (error) {
+
+      toast.error(
+        error.response?.data?.message ||
+          "Gagal mengajukan PKL"
+      );
+
       console.log(error);
+
     }
   };
 
-  const hasActiveRequest = myRequest.some(
-    (item) => item.status === "Menunggu" || item.status === "Disetujui",
-  );
+  const hasActiveRequest =
+    myRequest.some(
+      (item) =>
+        item.status === "Menunggu" ||
+        item.status === "Disetujui"
+    );
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-bold text-slate-800">Pengajuan PKL</h1>
+        <h1 className="text-4xl font-bold text-slate-800">
+          Pengajuan PKL
+        </h1>
 
         <p className="text-slate-500 mt-2">
           Pilih perusahaan untuk kegiatan PKL
@@ -78,7 +128,13 @@ function PengajuanPKL() {
         </p>
 
         <div className="space-y-5 max-h-[400px] overflow-y-auto pr-2">
-          {myRequest.slice(0, 1).map((item) => (
+          {myRequest.length === 0 && (
+            <p className="text-slate-500">
+              Belum ada pengajuan PKL
+            </p>
+          )}
+
+          {myRequest.map((item) => (
             <div
               key={item.id}
               className="border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all duration-200"
@@ -88,15 +144,20 @@ function PengajuanPKL() {
               </h3>
 
               <p className="text-slate-500 mt-2">
-                Pengajuan: {new Date(item.created_at).toLocaleDateString()}
+                Pengajuan:{" "}
+                {new Date(
+                  item.created_at
+                ).toLocaleDateString()}
               </p>
 
               <div className="mt-4">
                 <span
                   className={
-                    item.status === "Disetujui"
+                    item.status ===
+                    "Disetujui"
                       ? "bg-green-100 text-green-600 px-4 py-2 rounded-full text-sm"
-                      : item.status === "Ditolak"
+                      : item.status ===
+                          "Ditolak"
                         ? "bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm"
                         : "bg-yellow-100 text-yellow-700 px-4 py-2 rounded-full text-sm"
                   }
@@ -121,21 +182,31 @@ function PengajuanPKL() {
 
             <div className="space-y-3">
               <p className="text-slate-600">
-                <span className="font-semibold">Bidang:</span>{" "}
+                <span className="font-semibold">
+                  Bidang:
+                </span>{" "}
                 {item.bidang_industri}
               </p>
 
               <p className="text-slate-600">
-                <span className="font-semibold">Kuota:</span> {item.kuota}
+                <span className="font-semibold">
+                  Kuota:
+                </span>{" "}
+                {item.kuota}
               </p>
 
               <p className="text-slate-600">
-                <span className="font-semibold">Kontak:</span> {item.kontak}
+                <span className="font-semibold">
+                  Kontak:
+                </span>{" "}
+                {item.kontak}
               </p>
             </div>
 
             <button
-              onClick={() => ajukanPKL(item.id)}
+              onClick={() =>
+                ajukanPKL(item.id)
+              }
               disabled={hasActiveRequest}
               className={`mt-6 w-full py-4 rounded-2xl transition-all duration-200 ${
                 hasActiveRequest
@@ -143,7 +214,9 @@ function PengajuanPKL() {
                   : "bg-blue-600 hover:bg-blue-700 text-white"
               }`}
             >
-              {hasActiveRequest ? "Sudah Diajukan" : "Ajukan PKL"}
+              {hasActiveRequest
+                ? "Sudah Diajukan"
+                : "Ajukan PKL"}
             </button>
           </div>
         ))}

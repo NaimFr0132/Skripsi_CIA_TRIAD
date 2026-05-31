@@ -8,9 +8,7 @@ const roleMiddleware = require("../middleware/roleMiddleware");
 const createAuditLog = require("../utils/createAuditLog");
 const router = express.Router();
 router.use(authMiddleware);
-
-router.use(roleMiddleware("superadmin"));
-router.get("/all", async (req, res) => {
+router.get("/all", roleMiddleware("superadmin"), async (req, res) => {
   try {
     const result = await pool.query(
       `
@@ -39,7 +37,7 @@ router.get("/all", async (req, res) => {
   }
 });
 
-router.post("/create-admin", async (req, res) => {
+router.post("/create-admin", roleMiddleware("superadmin"), async (req, res) => {
   try {
     const { username, password, email } = req.body;
 
@@ -94,7 +92,7 @@ router.post("/create-admin", async (req, res) => {
   }
 });
 
-router.put("/update/:id", async (req, res) => {
+router.put("/update/:id", roleMiddleware("superadmin"), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -137,7 +135,7 @@ router.put("/update/:id", async (req, res) => {
   }
 });
 
-router.delete("/delete/:id", async (req, res) => {
+router.delete("/delete/:id",roleMiddleware("superadmin"), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -188,7 +186,7 @@ router.delete("/delete/:id", async (req, res) => {
   }
 });
 
-router.post("/create-student", async (req, res) => {
+router.post("/create-student", roleMiddleware("superadmin"), async (req, res) => {
   try {
     const {
       username,
@@ -257,7 +255,7 @@ router.post("/create-student", async (req, res) => {
   }
 });
 
-router.put("/toggle-active/:id", async (req, res) => {
+router.put("/toggle-active/:id", roleMiddleware("superadmin"), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -314,6 +312,40 @@ router.put("/toggle-active/:id", async (req, res) => {
     console.log(error);
 
     res.status(500).json(error);
+  }
+});
+
+router.get("/profile", async (req, res) => {
+   console.log("PROFILE ROUTE TERPANGGIL");
+  try {
+    const result = await pool.query(
+      `
+      SELECT
+        id,
+        username,
+        nama_lengkap,
+        kelas,
+        semester,
+        partner_pkl_id
+      FROM users
+      WHERE id = $1
+      `,
+      [req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "User tidak ditemukan",
+      });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      message: "Gagal mengambil profil",
+    });
   }
 });
 

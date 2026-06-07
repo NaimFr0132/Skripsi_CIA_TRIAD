@@ -72,7 +72,7 @@ async def verify_face(
 
         print("DISTANCE:", distance)
 
-        verified = distance < 0.4
+        verified = distance < 0.6
 
         return {
             "verified": verified,
@@ -125,7 +125,7 @@ async def realtime_verify(
 
         print("DISTANCE:", distance)
 
-        verified = distance < 0.4
+        verified = distance < 0.6
 
         return {
             "verified": verified,

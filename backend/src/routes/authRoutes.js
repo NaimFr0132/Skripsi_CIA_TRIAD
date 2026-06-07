@@ -137,6 +137,7 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign(
       {
         id: user.id,
+        username: user.username,
         role: user.role,
       },
       process.env.JWT_SECRET,
@@ -177,100 +178,64 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.put(
-  "/toggle-active/:id",
-  async (req, res) => {
+router.put("/toggle-active/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
 
-    try {
-
-      const { id } =
-        req.params;
-
-      const userResult =
-        await pool.query(
-          `
+    const userResult = await pool.query(
+      `
           SELECT *
           FROM users
           WHERE id = $1
           `,
-          [id]
-        );
+      [id],
+    );
 
-      if (
-        userResult.rows.length === 0
-      ) {
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        message: "User tidak ditemukan",
+      });
+    }
 
-        return res.status(404)
-          .json({
-            message:
-              "User tidak ditemukan",
-          });
+    const user = userResult.rows[0];
 
-      }
+    const newStatus = !user.is_active;
 
-      const user =
-        userResult.rows[0];
-
-      const newStatus =
-        !user.is_active;
-
-      await pool.query(
-        `
+    await pool.query(
+      `
         UPDATE users
         SET is_active = $1
         WHERE id = $2
         `,
-        [
-          newStatus,
-          id,
-        ]
-      );
+      [newStatus, id],
+    );
 
-      await createAuditLog({
+    await createAuditLog({
+      user_id: req.user.id,
 
-        user_id:
-          req.user.id,
+      role: req.user.role,
 
-        role:
-          req.user.role,
+      action: "TOGGLE_USER_STATUS",
 
-        action:
-          "TOGGLE_USER_STATUS",
+      description: `${req.user.role} mengubah status akun ${user.username} menjadi ${newStatus ? "aktif" : "nonaktif"}`,
 
-        description:
-          `${req.user.role} mengubah status akun ${user.username} menjadi ${newStatus ? "aktif" : "nonaktif"}`,
+      severity: "high",
 
-        severity:
-          "high",
+      status: "success",
 
-        status:
-          "success",
+      ip_address: req.ip,
 
-        ip_address:
-          req.ip,
+      user_agent: req.headers["user-agent"],
+    });
 
-        user_agent:
-          req.headers["user-agent"],
+    res.json({
+      message: `Status user berhasil diubah menjadi ${newStatus ? "aktif" : "nonaktif"}`,
+    });
+  } catch (error) {
+    console.log(error);
 
-      });
-
-      res.json({
-
-        message:
-          `Status user berhasil diubah menjadi ${newStatus ? "aktif" : "nonaktif"}`,
-
-      });
-
-    } catch (error) {
-
-      console.log(error);
-
-      res.status(500)
-        .json(error);
-
-    }
-
+    res.status(500).json(error);
   }
-);
+});
 
 module.exports = router;

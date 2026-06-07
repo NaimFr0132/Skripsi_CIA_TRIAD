@@ -8,6 +8,8 @@ const roleMiddleware = require("../middleware/roleMiddleware");
 
 const createAuditLog = require("../utils/createAuditLog");
 
+const createAktivitasPembelajaran = require("../utils/createAktivitasPembelajaran");
+
 const router = express.Router();
 
 router.use(authMiddleware);
@@ -15,18 +17,21 @@ router.get("/all", async (req, res) => {
   try {
     const result = await pool.query(
       `
-        SELECT
-          pkl_requests.*,
-          pkl_partners.nama_perusahaan
+      SELECT
+        pkl_requests.*,
+        pkl_partners.nama_perusahaan,
+        users.nama_lengkap AS siswa_nama
 
-        FROM pkl_requests
+      FROM pkl_requests
 
-        JOIN pkl_partners
-        ON pkl_requests.partner_id =
-        pkl_partners.id
+      JOIN pkl_partners
+      ON pkl_requests.partner_id = pkl_partners.id
 
-        ORDER BY pkl_requests.id DESC
-        `,
+      JOIN users
+      ON pkl_requests.siswa_id = users.id
+
+      ORDER BY pkl_requests.id DESC
+      `,
     );
 
     res.json(result.rows);
@@ -56,13 +61,12 @@ router.post("/create", async (req, res) => {
       WHERE siswa_id = $1
       AND status IN ('Menunggu', 'Disetujui')
       `,
-      [req.user.id]
+      [req.user.id],
     );
 
     if (existingRequest.rows.length > 0) {
       return res.status(400).json({
-        message:
-          "Anda masih memiliki pengajuan PKL aktif",
+        message: "Anda masih memiliki pengajuan PKL aktif",
       });
     }
 
@@ -83,12 +87,7 @@ router.post("/create", async (req, res) => {
         $4
       )
       `,
-      [
-        req.user.id,
-        req.user.username,
-        partner_id,
-        "Menunggu",
-      ]
+      [req.user.id, req.user.username, partner_id, "Menunggu"],
     );
 
     await createAuditLog({
@@ -98,8 +97,7 @@ router.post("/create", async (req, res) => {
 
       action: "CREATE_PKL_REQUEST",
 
-      description:
-        `${req.user.username} mengajukan PKL`,
+      description: `${req.user.username} mengajukan PKL`,
 
       severity: "medium",
 
@@ -107,20 +105,22 @@ router.post("/create", async (req, res) => {
 
       ip_address: req.ip,
 
-      user_agent:
-        req.headers["user-agent"],
+      user_agent: req.headers["user-agent"],
     });
+    console.log("USER LOGIN:", req.user);
+    await createAktivitasPembelajaran(
+      "Pengajuan PKL",
+      `${req.user.username} mengajukan PKL`,
+    );
 
     res.json({
-      message:
-        "Pengajuan PKL berhasil dibuat",
+      message: "Pengajuan PKL berhasil dibuat",
     });
   } catch (error) {
     console.log(error);
 
     res.status(500).json({
-      message:
-        "Gagal membuat pengajuan PKL",
+      message: "Gagal membuat pengajuan PKL",
     });
   }
 });
@@ -135,7 +135,7 @@ router.put("/approve/:id", async (req, res) => {
       FROM pkl_requests
       WHERE id = $1
       `,
-      [id]
+      [id],
     );
 
     if (requestData.rows.length === 0) {
@@ -159,7 +159,7 @@ router.put("/approve/:id", async (req, res) => {
       WHERE siswa_id = $1
       AND status = 'Disetujui'
       `,
-      [request.siswa_id]
+      [request.siswa_id],
     );
 
     if (existingApproved.rows.length > 0) {
@@ -174,7 +174,7 @@ router.put("/approve/:id", async (req, res) => {
       FROM pkl_partners
       WHERE id = $1
       `,
-      [request.partner_id]
+      [request.partner_id],
     );
 
     if (partnerData.rows.length === 0) {
@@ -197,7 +197,7 @@ router.put("/approve/:id", async (req, res) => {
       SET status = 'Disetujui'
       WHERE id = $1
       `,
-      [id]
+      [id],
     );
 
     await pool.query(
@@ -206,7 +206,7 @@ router.put("/approve/:id", async (req, res) => {
       SET kuota = kuota - 1
       WHERE id = $1
       `,
-      [request.partner_id]
+      [request.partner_id],
     );
 
     await pool.query(
@@ -215,10 +215,7 @@ router.put("/approve/:id", async (req, res) => {
       SET partner_pkl_id = $1
       WHERE id = $2
       `,
-      [
-        request.partner_id,
-        request.siswa_id,
-      ]
+      [request.partner_id, request.siswa_id],
     );
 
     await createAuditLog({
@@ -239,6 +236,11 @@ router.put("/approve/:id", async (req, res) => {
       user_agent: req.headers["user-agent"],
     });
 
+    await createAktivitasPembelajaran(
+      "Validasi PKL",
+      `${request.siswa_nama} disetujui PKL`,
+    );
+
     res.json({
       message: "Pengajuan disetujui",
     });
@@ -257,12 +259,18 @@ router.put("/reject/:id", async (req, res) => {
 
     const requestData = await pool.query(
       `
-        SELECT *
-        FROM pkl_requests
-        WHERE id = $1
-        `,
+      SELECT *
+      FROM pkl_requests
+      WHERE id = $1
+      `,
       [id],
     );
+
+    if (requestData.rows.length === 0) {
+      return res.status(404).json({
+        message: "Pengajuan tidak ditemukan",
+      });
+    }
 
     const request = requestData.rows[0];
 
@@ -277,21 +285,19 @@ router.put("/reject/:id", async (req, res) => {
 
     await createAuditLog({
       user_id: req.user.id,
-
       role: req.user.role,
-
       action: "REJECT_PKL_REQUEST",
-
       description: `Menolak PKL siswa ${request.siswa_nama}`,
-
       severity: "high",
-
       status: "success",
-
       ip_address: req.ip,
-
       user_agent: req.headers["user-agent"],
     });
+
+    await createAktivitasPembelajaran(
+      "Validasi PKL",
+      `${request.siswa_nama} ditolak PKL`,
+    );
 
     res.json({
       message: "Pengajuan ditolak",
@@ -299,7 +305,9 @@ router.put("/reject/:id", async (req, res) => {
   } catch (error) {
     console.log(error);
 
-    res.status(500).json(error);
+    res.status(500).json({
+      message: "Gagal menolak pengajuan PKL",
+    });
   }
 });
 

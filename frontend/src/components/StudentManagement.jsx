@@ -4,16 +4,14 @@ import axios from "axios";
 
 function StudentManagement() {
   const [students, setStudents] = useState([]);
+  const [editingStudent, setEditingStudent] = useState(null);
 
   const [newStudent, setNewStudent] = useState({
     username: "",
-
     password: "",
-
     nama_lengkap: "",
-
     kelas: "",
-
+    semester: 1,
     nisn: "",
   });
 
@@ -42,7 +40,6 @@ function StudentManagement() {
   const createStudent = async () => {
     try {
       const token = localStorage.getItem("token");
-
       await axios.post(
         "http://localhost:5000/api/users/create-student",
 
@@ -59,13 +56,10 @@ function StudentManagement() {
 
       setNewStudent({
         username: "",
-
         password: "",
-
         nama_lengkap: "",
-
         kelas: "",
-
+        semester: 1,
         nisn: "",
       });
     } catch (error) {
@@ -90,6 +84,38 @@ function StudentManagement() {
       fetchStudents();
     } catch (error) {
       console.log(error);
+    }
+  };
+
+  const handleUpdateStudent = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      await axios.put(
+        `http://localhost:5000/api/users/update/${editingStudent.id}`,
+        {
+          username: editingStudent.username,
+          nama_lengkap: editingStudent.nama_lengkap,
+          kelas: editingStudent.kelas,
+          semester: Number(editingStudent.semester),
+          nisn: editingStudent.nisn,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      setEditingStudent(null);
+
+      fetchStudents();
+
+      alert("Data siswa berhasil diperbarui");
+    } catch (error) {
+      console.log(error);
+
+      alert(error.response?.data?.message || "Gagal memperbarui data siswa");
     }
   };
 
@@ -145,6 +171,19 @@ function StudentManagement() {
           />
 
           <input
+            type="number"
+            placeholder="Semester"
+            value={newStudent.semester}
+            onChange={(e) =>
+              setNewStudent({
+                ...newStudent,
+                semester: e.target.value,
+              })
+            }
+            className="border border-slate-200 rounded-2xl px-5 py-4"
+          />
+
+          <input
             type="text"
             placeholder="Username"
             value={newStudent.username}
@@ -194,6 +233,7 @@ function StudentManagement() {
                 </h3>
 
                 <p className="text-slate-500 mt-1">{student.kelas}</p>
+                <p className="text-slate-500">Semester {student.semester}</p>
 
                 <p className="text-slate-400 text-sm mt-1">
                   NISN:
@@ -244,6 +284,17 @@ function StudentManagement() {
                 </button>
 
                 <button
+                  onClick={() =>
+                    setEditingStudent({
+                      ...student,
+                    })
+                  }
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-sm"
+                >
+                  Edit
+                </button>
+
+                <button
                   onClick={() => deleteStudent(student.id)}
                   className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm"
                 >
@@ -254,6 +305,96 @@ function StudentManagement() {
           ))}
         </div>
       </div>
+      {editingStudent && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-3xl w-[500px]">
+            <h2 className="text-2xl font-bold mb-6">Edit Siswa</h2>
+
+            <div className="space-y-4">
+              <input
+                type="text"
+                placeholder="Username"
+                value={editingStudent.username}
+                onChange={(e) =>
+                  setEditingStudent({
+                    ...editingStudent,
+                    username: e.target.value,
+                  })
+                }
+                className="w-full border rounded-xl p-3"
+              />
+
+              <input
+                type="text"
+                placeholder="Nama Lengkap"
+                value={editingStudent.nama_lengkap || ""}
+                onChange={(e) =>
+                  setEditingStudent({
+                    ...editingStudent,
+                    nama_lengkap: e.target.value,
+                  })
+                }
+                className="w-full border rounded-xl p-3"
+              />
+
+              <input
+                type="text"
+                placeholder="Kelas"
+                value={editingStudent.kelas || ""}
+                onChange={(e) =>
+                  setEditingStudent({
+                    ...editingStudent,
+                    kelas: e.target.value,
+                  })
+                }
+                className="w-full border rounded-xl p-3"
+              />
+
+              <input
+                type="number"
+                placeholder="Semester"
+                value={editingStudent.semester || 1}
+                onChange={(e) =>
+                  setEditingStudent({
+                    ...editingStudent,
+                    semester: e.target.value,
+                  })
+                }
+                className="w-full border rounded-xl p-3"
+              />
+
+              <input
+                type="text"
+                placeholder="NISN"
+                value={editingStudent.nisn || ""}
+                onChange={(e) =>
+                  setEditingStudent({
+                    ...editingStudent,
+                    nisn: e.target.value,
+                  })
+                }
+                className="w-full border rounded-xl p-3"
+              />
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleUpdateStudent}
+                className="bg-blue-600 text-white px-5 py-3 rounded-xl"
+              >
+                Simpan
+              </button>
+
+              <button
+                onClick={() => setEditingStudent(null)}
+                className="bg-slate-200 px-5 py-3 rounded-xl"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

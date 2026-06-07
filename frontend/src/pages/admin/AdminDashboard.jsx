@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 import PKLValidation from "./PKLValidation";
 import PKLCompanies from "./PKLCompanies";
 
@@ -17,8 +18,62 @@ import {
 
 function AdminDashboard() {
   const [page, setPage] = useState("dashboard");
+  const [activities, setActivities] = useState([]);
+  const [stats, setStats] = useState({
+    totalSiswa: 0,
+    totalPengajuan: 0,
+    totalMenunggu: 0,
+    totalDisetujui: 0,
+  });
 
   const username = localStorage.getItem("username");
+
+  const fetchStats = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await axios.get(
+        "http://localhost:5000/api/dashboard/admin-stats",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      console.log("ACTIVITIES", res.data);
+
+      console.log(res.data);
+      setStats(res.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const fetchActivities = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await axios.get(
+        "http://localhost:5000/api/dashboard/aktivitas-pembelajaran",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      console.log("ACTIVITIES", res.data);
+
+      setActivities(res.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+    fetchActivities();
+  }, []);
 
   return (
     <div className="flex bg-slate-100 min-h-screen">
@@ -178,25 +233,33 @@ function AdminDashboard() {
                 <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300">
                   <p className="text-slate-500 mb-3">Total Siswa</p>
 
-                  <h1 className="text-5xl font-bold text-slate-800">1,284</h1>
+                  <h1 className="text-5xl font-bold text-slate-800">
+                    {stats.totalSiswa}
+                  </h1>
                 </div>
 
                 <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300">
-                  <p className="text-slate-500 mb-3">Kehadiran Hari Ini</p>
+                  <p className="text-slate-500 mb-3">Pengajuan PKL</p>
 
-                  <h1 className="text-5xl font-bold text-slate-800">96%</h1>
+                  <h1 className="text-5xl font-bold text-slate-800">
+                    {stats.totalPengajuan}
+                  </h1>
                 </div>
 
                 <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300">
-                  <p className="text-slate-500 mb-3">Tugas Belum Dinilai</p>
+                  <p className="text-slate-500 mb-3">PKL Menunggu</p>
 
-                  <h1 className="text-5xl font-bold text-slate-800">48</h1>
+                  <h1 className="text-5xl font-bold text-yellow-600">
+                    {stats.totalMenunggu}
+                  </h1>
                 </div>
 
                 <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300">
-                  <p className="text-slate-500 mb-3">Pengumuman Baru</p>
+                  <p className="text-slate-500 mb-3">PKL Disetujui</p>
 
-                  <h1 className="text-5xl font-bold text-slate-800">3</h1>
+                  <h1 className="text-5xl font-bold text-green-600">
+                    {stats.totalDisetujui}
+                  </h1>
                 </div>
               </div>
 
@@ -215,35 +278,18 @@ function AdminDashboard() {
                   </div>
 
                   <div className="space-y-5">
-                    <div className="border border-slate-200 rounded-2xl p-5 hover:bg-slate-50 transition-all duration-200">
-                      <h3 className="font-semibold text-slate-800">
-                        Input Nilai Matematika
-                      </h3>
+                    {activities.map((item, index) => (
+                      <div
+                        key={index}
+                        className="border border-slate-200 rounded-2xl p-5 hover:bg-slate-50 transition-all duration-200"
+                      >
+                        <h3 className="font-semibold text-slate-800">
+                          {item.aktivitas}
+                        </h3>
 
-                      <p className="text-slate-500 mt-2">
-                        Kelas XI IPA 1 telah diperbarui
-                      </p>
-                    </div>
-
-                    <div className="border border-slate-200 rounded-2xl p-5 hover:bg-slate-50 transition-all duration-200">
-                      <h3 className="font-semibold text-slate-800">
-                        Pengajuan PKL Siswa
-                      </h3>
-
-                      <p className="text-slate-500 mt-2">
-                        Pengajuan siswa berhasil diperbarui
-                      </p>
-                    </div>
-
-                    <div className="border border-slate-200 rounded-2xl p-5 hover:bg-slate-50 transition-all duration-200">
-                      <h3 className="font-semibold text-slate-800">
-                        Modul Pembelajaran
-                      </h3>
-
-                      <p className="text-slate-500 mt-2">
-                        Modul ajar Bahasa Indonesia ditambahkan
-                      </p>
-                    </div>
+                        <p className="text-slate-500 mt-2">{item.deskripsi}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
 

@@ -12,21 +12,22 @@ router.get("/all", roleMiddleware("superadmin"), async (req, res) => {
   try {
     const result = await pool.query(
       `
-          SELECT
-            id,
-            username,
-            role,
-            email,
-            nama_lengkap,
-            kelas,
-            nisn,
-            is_active,
-            created_at
+      SELECT
+        id,
+        username,
+        role,
+        email,
+        nama_lengkap,
+        kelas,
+        semester,
+        nisn,
+        is_active,
+        created_at
 
-          FROM users
+      FROM users
 
-          ORDER BY id ASC
-          `,
+      ORDER BY id ASC
+      `,
     );
 
     res.json(result.rows);
@@ -40,7 +41,7 @@ router.get("/all", roleMiddleware("superadmin"), async (req, res) => {
 router.post("/create-admin", roleMiddleware("superadmin"), async (req, res) => {
   try {
     const { username, password, email } = req.body;
-
+    console.log(req.body);
     const hashedPassword = await bcrypt.hash(password, 10);
 
     await pool.query(
@@ -91,20 +92,45 @@ router.post("/create-admin", roleMiddleware("superadmin"), async (req, res) => {
     res.status(500).json(error);
   }
 });
-
 router.put("/update/:id", roleMiddleware("superadmin"), async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { username } = req.body;
+    const { username, nama_lengkap, kelas, semester, nisn } = req.body;
+
+    const userResult = await pool.query(
+      `
+        SELECT *
+        FROM users
+        WHERE id = $1
+        `,
+      [id],
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        message: "User tidak ditemukan",
+      });
+    }
+
+    if (!semester) {
+      return res.status(400).json({
+        message: "Semester wajib diisi",
+      });
+    }
 
     await pool.query(
       `
-      UPDATE users
-      SET username = $1
-      WHERE id = $2
-      `,
-      [username, id],
+        UPDATE users
+        SET
+          username = $1,
+          nama_lengkap = $2,
+          kelas = $3,
+          semester = $4,
+          nisn = $5
+        WHERE id = $6
+        `,
+      [username, nama_lengkap, kelas, Number(semester), nisn, id],
     );
 
     await createAuditLog({
@@ -112,9 +138,9 @@ router.put("/update/:id", roleMiddleware("superadmin"), async (req, res) => {
 
       role: req.user.role,
 
-      action: "UPDATE_USER",
+      action: "UPDATE_STUDENT",
 
-      description: `Mengupdate user ${username}`,
+      description: `Mengubah data siswa ${nama_lengkap}`,
 
       severity: "medium",
 
@@ -126,16 +152,19 @@ router.put("/update/:id", roleMiddleware("superadmin"), async (req, res) => {
     });
 
     res.json({
-      message: "Admin berhasil diupdate",
+      message: "Data siswa berhasil diperbarui",
     });
   } catch (error) {
     console.log(error);
 
-    res.status(500).json(error);
+    res.status(500).json({
+      message: error.message,
+      error,
+    });
   }
 });
 
-router.delete("/delete/:id",roleMiddleware("superadmin"), async (req, res) => {
+router.delete("/delete/:id", roleMiddleware("superadmin"), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -186,24 +215,18 @@ router.delete("/delete/:id",roleMiddleware("superadmin"), async (req, res) => {
   }
 });
 
-router.post("/create-student", roleMiddleware("superadmin"), async (req, res) => {
-  try {
-    const {
-      username,
+router.post(
+  "/create-student",
+  roleMiddleware("superadmin"),
+  async (req, res) => {
+    try {
+      const { username, password, nama_lengkap, kelas, semester, nisn } =
+        req.body;
 
-      password,
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-      nama_lengkap,
-
-      kelas,
-
-      nisn,
-    } = req.body;
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    await pool.query(
-      `
+      await pool.query(
+        `
       INSERT INTO users
       (
         username,
@@ -211,6 +234,7 @@ router.post("/create-student", roleMiddleware("superadmin"), async (req, res) =>
         role,
         nama_lengkap,
         kelas,
+        semester,
         nisn
       )
 
@@ -221,116 +245,139 @@ router.post("/create-student", roleMiddleware("superadmin"), async (req, res) =>
         $3,
         $4,
         $5,
-        $6
+        $6,
+        $7
       )
       `,
-      [username, hashedPassword, "siswa", nama_lengkap, kelas, nisn],
-    );
+        [
+          username,
+          hashedPassword,
+          "siswa",
+          nama_lengkap,
+          kelas,
+          Number(semester),
+          nisn,
+        ],
+      );
 
-    await createAuditLog({
-      user_id: req.user.id,
+      await createAuditLog({
+        user_id: req.user.id,
 
-      role: req.user.role,
+        role: req.user.role,
 
-      action: "CREATE_STUDENT",
+        action: "CREATE_STUDENT",
 
-      description: `Menambahkan siswa ${username}`,
+        description: `Menambahkan siswa ${username}`,
 
-      severity: "medium",
+        severity: "medium",
 
-      status: "success",
+        status: "success",
 
-      ip_address: req.ip,
+        ip_address: req.ip,
 
-      user_agent: req.headers["user-agent"],
-    });
+        user_agent: req.headers["user-agent"],
+      });
 
-    res.json({
-      message: "Siswa berhasil ditambahkan",
-    });
-  } catch (error) {
-    console.log(error);
+      res.json({
+        message: "Siswa berhasil ditambahkan",
+      });
+    } catch (error) {
+      console.log(error);
 
-    res.status(500).json(error);
-  }
-});
+      res.status(500).json(error);
+    }
+  },
+);
 
-router.put("/toggle-active/:id", roleMiddleware("superadmin"), async (req, res) => {
-  try {
-    const { id } = req.params;
+router.put(
+  "/toggle-active/:id",
+  roleMiddleware("superadmin"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
 
-    const userResult = await pool.query(
-      `
+      const userResult = await pool.query(
+        `
           SELECT *
           FROM users
           WHERE id = $1
           `,
-      [id],
-    );
+        [id],
+      );
 
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({
-        message: "User tidak ditemukan",
-      });
-    }
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({
+          message: "User tidak ditemukan",
+        });
+      }
 
-    const user = userResult.rows[0];
+      const user = userResult.rows[0];
 
-    const newStatus = !user.is_active;
+      const newStatus = !user.is_active;
 
-    await pool.query(
-      `
+      await pool.query(
+        `
         UPDATE users
         SET is_active = $1
         WHERE id = $2
         `,
-      [newStatus, id],
-    );
+        [newStatus, id],
+      );
 
-    await createAuditLog({
-      user_id: req.user.id,
+      await createAuditLog({
+        user_id: req.user.id,
 
-      role: req.user.role,
+        role: req.user.role,
 
-      action: "TOGGLE_USER_STATUS",
+        action: "TOGGLE_USER_STATUS",
 
-      description: `${req.user.username || req.user.role} mengubah status akun ${user.username} menjadi ${newStatus ? "aktif" : "nonaktif"}`,
+        description: `${req.user.username || req.user.role} mengubah status akun ${user.username} menjadi ${newStatus ? "aktif" : "nonaktif"}`,
 
-      severity: "high",
+        severity: "high",
 
-      status: "success",
+        status: "success",
 
-      ip_address: req.ip,
+        ip_address: req.ip,
 
-      user_agent: req.headers["user-agent"],
-    });
+        user_agent: req.headers["user-agent"],
+      });
 
-    res.json({
-      message: `Status user berhasil diubah menjadi ${newStatus ? "aktif" : "nonaktif"}`,
-    });
-  } catch (error) {
-    console.log(error);
+      res.json({
+        message: `Status user berhasil diubah menjadi ${newStatus ? "aktif" : "nonaktif"}`,
+      });
+    } catch (error) {
+      console.log(error);
 
-    res.status(500).json(error);
-  }
-});
+      res.status(500).json(error);
+    }
+  },
+);
 
 router.get("/profile", async (req, res) => {
-   console.log("PROFILE ROUTE TERPANGGIL");
+  console.log("PROFILE ROUTE TERPANGGIL");
   try {
     const result = await pool.query(
       `
       SELECT
-        id,
-        username,
-        nama_lengkap,
-        kelas,
-        semester,
-        partner_pkl_id
-      FROM users
-      WHERE id = $1
-      `,
-      [req.user.id]
+        u.id,
+        u.username,
+        u.nama_lengkap,
+        u.kelas,
+        u.semester,
+        u.partner_pkl_id,
+
+        p.nama_perusahaan,
+        p.bidang_industri,
+        p.alamat
+
+      FROM users u
+
+      LEFT JOIN pkl_partners p
+      ON p.id = u.partner_pkl_id
+
+      WHERE u.id = $1
+  `,
+      [req.user.id],
     );
 
     if (result.rows.length === 0) {

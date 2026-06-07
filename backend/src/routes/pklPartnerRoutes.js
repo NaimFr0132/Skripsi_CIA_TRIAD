@@ -192,4 +192,79 @@ router.delete(
   }
 );
 
+router.put(
+  "/update/:id",
+  roleMiddleware("superadmin"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const {
+        nama_perusahaan,
+        alamat,
+        kuota,
+        kontak,
+        bidang_industri,
+      } = req.body;
+
+      const partnerData = await pool.query(
+        `
+        SELECT *
+        FROM pkl_partners
+        WHERE id = $1
+        `,
+        [id]
+      );
+
+      if (partnerData.rows.length === 0) {
+        return res.status(404).json({
+          message: "Mitra PKL tidak ditemukan",
+        });
+      }
+
+      const partner = partnerData.rows[0];
+
+      await pool.query(
+        `
+        UPDATE pkl_partners
+        SET
+          nama_perusahaan = $1,
+          alamat = $2,
+          kuota = $3,
+          kontak = $4,
+          bidang_industri = $5
+        WHERE id = $6
+        `,
+        [
+          nama_perusahaan,
+          alamat,
+          Number(kuota),
+          kontak,
+          bidang_industri,
+          id,
+        ]
+      );
+
+      await createAuditLog({
+        user_id: req.user.id,
+        role: req.user.role,
+        action: "UPDATE_PKL_PARTNER",
+        description: `Mengubah data mitra PKL ${nama_perusahaan}`,
+        severity: "medium",
+        status: "success",
+        ip_address: req.ip,
+        user_agent: req.headers["user-agent"],
+      });
+
+      res.json({
+        message: "Data mitra PKL berhasil diperbarui",
+      });
+    } catch (error) {
+      console.log(error);
+
+      res.status(500).json({
+        message: "Gagal memperbarui data mitra PKL",
+      });
+    }
+  }
+);
 module.exports = router;

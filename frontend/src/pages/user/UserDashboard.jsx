@@ -10,6 +10,8 @@ import {
 
 import PengajuanPKL from "./PengajuanPKL";
 
+import Rapor from "./Rapor";
+
 function UserDashboard() {
   const [page, setPage] = useState("dashboard");
 
@@ -91,7 +93,7 @@ function UserDashboard() {
   const semester = profile?.semester || 0;
 
   const sudahDiterimaPKL = profile?.partner_pkl_id !== null;
-
+// Syarat boleh mengajukan PKL: kelas 11 ke atas dan belum diterima PKL
   const bolehPKL = semester >= 5 && !sudahDiterimaPKL;
 
   return (
@@ -150,7 +152,14 @@ function UserDashboard() {
               </div>
             </li>
 
-            <li className="p-4 rounded-2xl cursor-pointer transition-all duration-200 font-medium text-slate-700 hover:bg-slate-100">
+            <li
+              onClick={() => setPage("rapor")}
+              className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 font-medium ${
+                page === "rapor"
+                  ? "bg-blue-600 text-white shadow-md scale-[1.02]"
+                  : "text-slate-700 hover:bg-slate-100"
+              }`}
+            >
               <div className="flex items-center gap-3">
                 <FileText size={20} />
                 <span>Rapor</span>
@@ -288,6 +297,7 @@ function UserDashboard() {
           )}
 
           {page === "pkl" && <PengajuanPKL />}
+          {page === "rapor" && <Rapor />}
         </div>
       </div>
     </div>
